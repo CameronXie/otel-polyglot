@@ -203,7 +203,7 @@ type ForwardResult struct {
         Duration   float64 `json:"duration_seconds,omitempty"`
 }
 
-func (h *Handler) ForwardRequests(c *gin.Context) <span class="cov5" title="5">{
+func (h *Handler) ForwardRequests(c *gin.Context) <span class="cov6" title="7">{
         ctx := c.Request.Context()
         bag := baggage.FromContext(ctx)
 
@@ -215,7 +215,7 @@ func (h *Handler) ForwardRequests(c *gin.Context) <span class="cov5" title="5">{
                 spanAttrs = append(spanAttrs, attribute.String("baggage", bag.String()))
         }</span>
 
-        <span class="cov5" title="5">ctx, span := h.tracer.Start(ctx, "forward.batch", trace.WithAttributes(spanAttrs...))
+        <span class="cov6" title="7">ctx, span := h.tracer.Start(ctx, "forward.batch", trace.WithAttributes(spanAttrs...))
         defer span.End()
 
         h.logger.InfoContext(ctx, "Starting forward batch",
@@ -224,7 +224,7 @@ func (h *Handler) ForwardRequests(c *gin.Context) <span class="cov5" title="5">{
         )
 
         results, err := h.forwardBatch(ctx)
-        if err != nil </span><span class="cov1" title="1">{
+        if err != nil </span><span class="cov2" title="2">{
                 h.logger.ErrorContext(ctx, "Batch processing failed", slog.Any("error", err))
                 span.RecordError(err)
                 span.SetStatus(codes.Error, "batch failed")
@@ -232,25 +232,25 @@ func (h *Handler) ForwardRequests(c *gin.Context) <span class="cov5" title="5">{
                 return
         }</span>
 
-        <span class="cov4" title="4">span.SetAttributes(attribute.Int("forward.batch_size", len(h.config.ForwardURLs)))
+        <span class="cov5" title="5">span.SetAttributes(attribute.Int("forward.batch_size", len(h.config.ForwardURLs)))
         span.SetStatus(codes.Ok, "batch completed")
         h.logger.InfoContext(ctx, "Forward batch completed", slog.Int("results.count", len(results)))
 
         c.JSON(http.StatusOK, gin.H{"results": results})</span>
 }
 
-func (h *Handler) forwardBatch(ctx context.Context) ([]ForwardResult, error) <span class="cov7" title="10">{
+func (h *Handler) forwardBatch(ctx context.Context) ([]ForwardResult, error) <span class="cov7" title="12">{
         urlCount := len(h.config.ForwardURLs)
         resultsChan := make(chan ForwardResult, urlCount)
 
         g, ctx := errgroup.WithContext(ctx)
 
-        for _, rawURL := range h.config.ForwardURLs </span><span class="cov9" title="21">{
-                g.Go(func() error </span><span class="cov9" title="21">{
+        for _, rawURL := range h.config.ForwardURLs </span><span class="cov9" title="23">{
+                g.Go(func() error </span><span class="cov9" title="23">{
                         select </span>{
-                        case &lt;-ctx.Done():<span class="cov4" title="4">
+                        case &lt;-ctx.Done():<span class="cov5" title="5">
                                 return ctx.Err()</span>
-                        default:<span class="cov8" title="17">
+                        default:<span class="cov8" title="18">
                                 result := h.forwardSingle(ctx, rawURL)
                                 resultsChan &lt;- result
                                 return nil</span>
@@ -258,22 +258,22 @@ func (h *Handler) forwardBatch(ctx context.Context) ([]ForwardResult, error) <sp
                 })
         }
 
-        <span class="cov7" title="10">err := g.Wait()
+        <span class="cov7" title="12">err := g.Wait()
         close(resultsChan)
 
-        if err != nil </span><span class="cov2" title="2">{
+        if err != nil </span><span class="cov4" title="3">{
                 return nil, fmt.Errorf("batch processing incomplete: %w", err)
         }</span>
 
-        <span class="cov6" title="8">results := make([]ForwardResult, 0, urlCount)
-        for r := range resultsChan </span><span class="cov8" title="17">{
+        <span class="cov7" title="9">results := make([]ForwardResult, 0, urlCount)
+        for r := range resultsChan </span><span class="cov8" title="18">{
                 results = append(results, r)
         }</span>
 
-        <span class="cov6" title="8">return results, nil</span>
+        <span class="cov7" title="9">return results, nil</span>
 }
 
-func (h *Handler) forwardSingle(ctx context.Context, rawURL string) ForwardResult <span class="cov9" title="22">{
+func (h *Handler) forwardSingle(ctx context.Context, rawURL string) ForwardResult <span class="cov9" title="23">{
         url, err := neturl.Parse(strings.TrimSpace(rawURL))
         if err != nil </span><span class="cov2" title="2">{
                 return ForwardResult{
@@ -282,7 +282,7 @@ func (h *Handler) forwardSingle(ctx context.Context, rawURL string) ForwardResul
                 }
         }</span>
 
-        <span class="cov9" title="20">ctx, span := h.tracer.Start(ctx, "forward.request",
+        <span class="cov9" title="21">ctx, span := h.tracer.Start(ctx, "forward.request",
                 trace.WithAttributes(
                         semconv.URLFull(rawURL),
                 ),
@@ -300,13 +300,13 @@ func (h *Handler) forwardSingle(ctx context.Context, rawURL string) ForwardResul
                 return result
         }</span>
 
-        <span class="cov8" title="17">recordMetrics(ctx, h.metrics, url, result)
+        <span class="cov8" title="18">recordMetrics(ctx, h.metrics, url, result)
 
         span.SetAttributes(
                 semconv.HTTPResponseStatusCode(result.StatusCode),
                 semconv.HTTPRequestMethodGet,
         )
-        if result.StatusCode &gt;= http.StatusBadRequest </span><span class="cov2" title="2">{
+        if result.StatusCode &gt;= http.StatusBadRequest </span><span class="cov4" title="3">{
                 span.SetStatus(codes.Error, "upstream error")
                 logger.WarnContext(ctx, "Upstream returned error status",
                         slog.Int("http.response.status_code", result.StatusCode),
@@ -321,7 +321,7 @@ func (h *Handler) forwardSingle(ctx context.Context, rawURL string) ForwardResul
         return result</span>
 }
 
-func executeForwardRequest(ctx context.Context, url *neturl.URL, client *http.Client) (ForwardResult, error) <span class="cov10" title="26">{
+func executeForwardRequest(ctx context.Context, url *neturl.URL, client *http.Client) (ForwardResult, error) <span class="cov10" title="27">{
         startTime := time.Now()
 
         req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), http.NoBody)
@@ -334,7 +334,7 @@ func executeForwardRequest(ctx context.Context, url *neturl.URL, client *http.Cl
         }</span>
 
         //nolint:gosec // URLs are admin-configured via FORWARD_URLS, not user input
-        <span class="cov10" title="26">resp, err := client.Do(req)
+        <span class="cov10" title="27">resp, err := client.Do(req)
         if err != nil </span><span class="cov4" title="4">{
                 return ForwardResult{
                         URL:      url.String(),
@@ -342,9 +342,9 @@ func executeForwardRequest(ctx context.Context, url *neturl.URL, client *http.Cl
                         Duration: time.Since(startTime).Seconds(),
                 }, fmt.Errorf("execute request: %w", err)
         }</span>
-        <span class="cov9" title="22">defer func() </span><span class="cov9" title="22">{ _ = resp.Body.Close() }</span>()
+        <span class="cov9" title="23">defer func() </span><span class="cov9" title="23">{ _ = resp.Body.Close() }</span>()
 
-        <span class="cov9" title="22">body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
+        <span class="cov9" title="23">body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
         if err != nil </span><span class="cov0" title="0">{
                 return ForwardResult{
                         URL:        url.String(),
@@ -354,7 +354,7 @@ func executeForwardRequest(ctx context.Context, url *neturl.URL, client *http.Cl
                 }, fmt.Errorf("read response body: %w", err)
         }</span>
 
-        <span class="cov9" title="22">return ForwardResult{
+        <span class="cov9" title="23">return ForwardResult{
                 URL:        url.String(),
                 StatusCode: resp.StatusCode,
                 Body:       string(body),
@@ -362,7 +362,7 @@ func executeForwardRequest(ctx context.Context, url *neturl.URL, client *http.Cl
         }, nil</span>
 }
 
-func recordMetrics(ctx context.Context, metrics *Metrics, url *neturl.URL, result ForwardResult) <span class="cov8" title="17">{
+func recordMetrics(ctx context.Context, metrics *Metrics, url *neturl.URL, result ForwardResult) <span class="cov8" title="18">{
         opt := metric.WithAttributes(
                 semconv.ServerAddress(url.Host),
                 semconv.URLScheme(url.Scheme),
@@ -584,7 +584,7 @@ type Metrics struct {
 }
 
 // NewMetrics creates a Metrics instance with forward request metrics.
-func NewMetrics(meterName string) (*Metrics, error) <span class="cov9" title="17">{
+func NewMetrics(meterName string) (*Metrics, error) <span class="cov9" title="22">{
         meter := otel.Meter(meterName)
 
         forward, err := newForwardMetrics(meter)
@@ -592,12 +592,12 @@ func NewMetrics(meterName string) (*Metrics, error) <span class="cov9" title="17
                 return nil, fmt.Errorf("forward metrics: %w", err)
         }</span>
 
-        <span class="cov9" title="17">return &amp;Metrics{
+        <span class="cov9" title="22">return &amp;Metrics{
                 Forward: forward,
         }, nil</span>
 }
 
-func newForwardMetrics(meter metric.Meter) (*ForwardMetrics, error) <span class="cov10" title="18">{
+func newForwardMetrics(meter metric.Meter) (*ForwardMetrics, error) <span class="cov10" title="23">{
         requests, err := meter.Int64Counter(
                 "forward.requests",
                 metric.WithDescription("Total outbound forward requests"),
@@ -607,7 +607,7 @@ func newForwardMetrics(meter metric.Meter) (*ForwardMetrics, error) <span class=
                 return nil, fmt.Errorf("create forward.requests: %w", err)
         }</span>
 
-        <span class="cov10" title="18">duration, err := meter.Float64Histogram(
+        <span class="cov10" title="23">duration, err := meter.Float64Histogram(
                 "forward.duration",
                 metric.WithDescription("Outbound forward request duration"),
                 metric.WithUnit("s"),
@@ -618,7 +618,7 @@ func newForwardMetrics(meter metric.Meter) (*ForwardMetrics, error) <span class=
                 return nil, fmt.Errorf("create forward.duration: %w", err)
         }</span>
 
-        <span class="cov10" title="18">return &amp;ForwardMetrics{
+        <span class="cov10" title="23">return &amp;ForwardMetrics{
                 Requests: requests,
                 Duration: duration,
         }, nil</span>

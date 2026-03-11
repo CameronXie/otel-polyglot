@@ -44,6 +44,14 @@ func (l *testLogger) assertContains(t *testing.T, substr string) {
 	}
 }
 
+func (l *testLogger) assertNotContains(t *testing.T, substr string) {
+	t.Helper()
+	logOutput := l.buf.String()
+	if strings.Contains(logOutput, substr) {
+		t.Errorf("log should not contain %q\nactual log:\n%s", substr, logOutput)
+	}
+}
+
 // assertForwardResultEqual validates ForwardResult fields match expected values.
 func assertForwardResultEqual(t *testing.T, got, want ForwardResult, wantURL string) {
 	t.Helper()
@@ -103,26 +111,6 @@ func newTestServer(t *testing.T, status int, body string, delay time.Duration) *
 	return server
 }
 
-// assertJSONResponse asserts HTTP response status and JSON key existence.
-func assertJSONResponse(t *testing.T, w *httptest.ResponseRecorder, wantStatus int, wantKey string) {
-	t.Helper()
-
-	if w.Code != wantStatus {
-		t.Errorf("status = %v, want %v", w.Code, wantStatus)
-	}
-
-	var resp map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("failed to parse JSON response: %v", err)
-	}
-
-	if wantKey != "" {
-		if _, ok := resp[wantKey]; !ok {
-			t.Errorf("response missing %q key: %v", wantKey, resp)
-		}
-	}
-}
-
 func TestExecuteForwardRequest(t *testing.T) {
 	t.Parallel()
 
@@ -133,6 +121,7 @@ func TestExecuteForwardRequest(t *testing.T) {
 		client           *http.Client
 		want             ForwardResult
 		wantErrSubstring string
+		wantBodyMaxSize  int
 	}{
 		"successful request": {
 			serverStatus: 200,
@@ -177,6 +166,13 @@ func TestExecuteForwardRequest(t *testing.T) {
 			client:           &http.Client{Timeout: 100 * time.Millisecond},
 			wantErrSubstring: "context deadline exceeded",
 		},
+		"large body is truncated to max size": {
+			serverStatus:    200,
+			serverBody:      strings.Repeat("a", 1<<20+1000),
+			client:          &http.Client{Timeout: 5 * time.Second},
+			want:            ForwardResult{StatusCode: 200},
+			wantBodyMaxSize: 1 << 20,
+		},
 	}
 
 	for name, tc := range tests {
@@ -212,7 +208,22 @@ func TestExecuteForwardRequest(t *testing.T) {
 				return
 			}
 
-			assertForwardResultEqual(t, result, tc.want, server.URL)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			// Skip body comparison for truncation tests
+			if tc.wantBodyMaxSize == 0 {
+				assertForwardResultEqual(t, result, tc.want, server.URL)
+			} else {
+				// For body size tests, only verify status and size
+				if result.StatusCode != tc.want.StatusCode {
+					t.Errorf("StatusCode = %v, want %v", result.StatusCode, tc.want.StatusCode)
+				}
+				if len(result.Body) > tc.wantBodyMaxSize {
+					t.Errorf("Body length = %v, want <= %v", len(result.Body), tc.wantBodyMaxSize)
+				}
+			}
 
 			if tc.serverDelay > 0 && result.Duration < float64(tc.serverDelay.Seconds())*0.8 {
 				t.Errorf("Duration = %v, want >= %v (with 20%% tolerance)", result.Duration, tc.serverDelay)
@@ -221,70 +232,39 @@ func TestExecuteForwardRequest(t *testing.T) {
 	}
 }
 
-func TestExecuteForwardRequest_BodySizeLimit(t *testing.T) {
+func TestForwardSingle(t *testing.T) {
 	t.Parallel()
-
-	t.Run("respects max body size limit", func(t *testing.T) {
-		t.Parallel()
-
-		// Create server that writes more than 1MB without large string allocation
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			for range 1100 {
-				_, _ = w.Write([]byte(strings.Repeat("a", 1000)))
-			}
-		}))
-		t.Cleanup(server.Close)
-
-		parsedURL, _ := url.Parse(server.URL)
-		client := &http.Client{Timeout: 5 * time.Second}
-		ctx := context.Background()
-
-		result, err := executeForwardRequest(ctx, parsedURL, client)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		maxSize := 1 << 20 // 1MB
-		if len(result.Body) > maxSize {
-			t.Errorf("Body length = %v, want <= %v", len(result.Body), maxSize)
-		}
-
-		if result.StatusCode != 200 {
-			t.Errorf("StatusCode = %v, want 200", result.StatusCode)
-		}
-	})
-}
-
-func TestForwardSingle_InvalidURL(t *testing.T) {
-	t.Parallel()
-
-	handler, _ := newTestHandler(t, &http.Client{}, nil)
 
 	tests := map[string]struct {
 		rawURL           string
-		serverURL        string // expected URL in result (same as rawURL for invalid URLs)
+		useServer        bool
+		serverStatus     int
+		serverDelay      time.Duration
+		cancelCtx        bool
 		wantErrSubstring string
 	}{
 		"invalid url format with bad scheme": {
 			rawURL:           "://invalid-url",
-			serverURL:        "://invalid-url",
 			wantErrSubstring: "invalid url",
 		},
 		"invalid url with space": {
 			rawURL:           "http://example .com",
-			serverURL:        "http://example .com",
 			wantErrSubstring: "invalid url",
 		},
-		"empty url fails during request": {
+		"empty url": {
 			rawURL:           "",
-			serverURL:        "",
 			wantErrSubstring: "unsupported protocol scheme",
 		},
-		"missing scheme fails during request": {
+		"missing scheme": {
 			rawURL:           "example.com",
-			serverURL:        "example.com",
 			wantErrSubstring: "unsupported protocol scheme",
+		},
+		"context cancellation": {
+			useServer:        true,
+			serverStatus:     200,
+			serverDelay:      2 * time.Second,
+			cancelCtx:        true,
+			wantErrSubstring: "context deadline exceeded",
 		},
 	}
 
@@ -292,8 +272,29 @@ func TestForwardSingle_InvalidURL(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
+			var targetURL string
+			var client *http.Client
+
+			if tc.useServer {
+				server := newTestServer(t, tc.serverStatus, "ok", tc.serverDelay)
+				t.Cleanup(server.Close)
+				targetURL = server.URL
+				client = &http.Client{Timeout: 5 * time.Second}
+			} else {
+				targetURL = tc.rawURL
+				client = &http.Client{}
+			}
+
+			handler, _ := newTestHandler(t, client, nil)
+
 			ctx := context.Background()
-			result := handler.forwardSingle(ctx, tc.rawURL)
+			if tc.cancelCtx {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
+				defer cancel()
+			}
+
+			result := handler.forwardSingle(ctx, targetURL)
 
 			if result.Error == "" {
 				t.Error("expected result.Error to be set")
@@ -301,10 +302,11 @@ func TestForwardSingle_InvalidURL(t *testing.T) {
 				t.Errorf("result.Error = %q, want contain %q", result.Error, tc.wantErrSubstring)
 			}
 
-			if result.URL != tc.serverURL {
-				t.Errorf("URL = %q, want %q", result.URL, tc.serverURL)
+			if result.URL != targetURL {
+				t.Errorf("URL = %q, want %q", result.URL, targetURL)
 			}
 
+			// Parse errors don't incur network delay
 			if tc.wantErrSubstring != "invalid url" && result.Duration <= 0 {
 				t.Errorf("Duration = %v, want > 0", result.Duration)
 			}
@@ -312,50 +314,20 @@ func TestForwardSingle_InvalidURL(t *testing.T) {
 	}
 }
 
-func TestForwardSingle_ContextCancellation(t *testing.T) {
-	t.Parallel()
-
-	server := newTestServer(t, 200, "ok", 2*time.Second)
-	t.Cleanup(server.Close)
-
-	handler, _ := newTestHandler(t, &http.Client{Timeout: 5 * time.Second}, nil)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-
-	result := handler.forwardSingle(ctx, server.URL)
-
-	wantErrSubstring := "context deadline exceeded"
-	if result.Error == "" {
-		t.Error("expected result.Error to be set")
-	} else if !strings.Contains(result.Error, wantErrSubstring) {
-		t.Errorf("result.Error = %q, want contain %q", result.Error, wantErrSubstring)
-	}
-
-	if result.URL != server.URL {
-		t.Errorf("URL = %q, want %q", result.URL, server.URL)
-	}
-
-	if result.Duration <= 0 {
-		t.Errorf("Duration = %v, want > 0", result.Duration)
-	}
-}
-
 func TestForwardBatch(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		wantCount int
-		wantError string
-		servers   []struct {
+		servers []struct {
 			status int
 			body   string
 			delay  time.Duration
 		}
 		cancelCtx bool
+		wantCount int
+		wantError string
 	}{
 		"successful batch with multiple servers": {
-			wantCount: 2,
 			servers: []struct {
 				status int
 				body   string
@@ -364,9 +336,9 @@ func TestForwardBatch(t *testing.T) {
 				{200, "server1", 0},
 				{200, "server2", 0},
 			},
+			wantCount: 2,
 		},
 		"handles mixed success and failure": {
-			wantCount: 2,
 			servers: []struct {
 				status int
 				body   string
@@ -375,9 +347,9 @@ func TestForwardBatch(t *testing.T) {
 				{200, "success", 0},
 				{500, "error", 0},
 			},
+			wantCount: 2,
 		},
 		"handles large batch of URLs": {
-			wantCount: 10,
 			servers: func() []struct {
 				status int
 				body   string
@@ -397,17 +369,17 @@ func TestForwardBatch(t *testing.T) {
 				}
 				return s
 			}(),
+			wantCount: 10,
 		},
 		"empty URLs returns empty results": {
-			wantCount: 0,
 			servers: []struct {
 				status int
 				body   string
 				delay  time.Duration
 			}{},
+			wantCount: 0,
 		},
 		"context cancellation propagates to workers": {
-			wantError: "batch processing incomplete",
 			servers: []struct {
 				status int
 				body   string
@@ -418,6 +390,7 @@ func TestForwardBatch(t *testing.T) {
 				{200, "ok", 2 * time.Second},
 			},
 			cancelCtx: true,
+			wantError: "batch processing incomplete",
 		},
 	}
 
@@ -425,7 +398,6 @@ func TestForwardBatch(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			// Create servers and register cleanup
 			var urls []string
 			for _, s := range tc.servers {
 				server := newTestServer(t, s.status, s.body, s.delay)
@@ -466,28 +438,41 @@ func TestForwardBatch(t *testing.T) {
 	}
 }
 
-func TestForwardRequests_HTTPHandler(t *testing.T) {
+func TestForwardRequests(t *testing.T) {
 	t.Parallel()
-
 	gin.SetMode(gin.TestMode)
 
 	tests := map[string]struct {
-		forwardURLs []string
-		wantStatus  int
-		wantRespKey string
-		wantLog     string
+		serverStatus int
+		serverBody   string
+		forwardURLs  []string
+		cancelCtx    bool
+		wantStatus   int
+		wantRespKey  string
 	}{
 		"successful batch": {
-			forwardURLs: []string{"http://example.com"},
-			wantStatus:  200,
-			wantRespKey: "results",
-			wantLog:     "Forward batch completed",
+			serverStatus: 200,
+			serverBody:   `{"status":"ok"}`,
+			wantStatus:   200,
+			wantRespKey:  "results",
 		},
 		"no urls configured": {
 			forwardURLs: []string{},
 			wantStatus:  200,
 			wantRespKey: "results",
-			wantLog:     "Forward batch completed",
+		},
+		"upstream error still returns success": {
+			serverStatus: 500,
+			serverBody:   "internal error",
+			wantStatus:   200,
+			wantRespKey:  "results",
+		},
+		"context cancelled returns error": {
+			serverStatus: 200,
+			serverBody:   "ok",
+			cancelCtx:    true,
+			wantStatus:   http.StatusInternalServerError,
+			wantRespKey:  "error",
 		},
 	}
 
@@ -497,10 +482,9 @@ func TestForwardRequests_HTTPHandler(t *testing.T) {
 
 			testLog := newTestLogger()
 
-			// Use local variable to avoid mutating test case
 			forwardURLs := tc.forwardURLs
-			if len(forwardURLs) > 0 {
-				server := newTestServer(t, 200, `{"status":"ok"}`, 0)
+			if forwardURLs == nil && tc.serverStatus != 0 {
+				server := newTestServer(t, tc.serverStatus, tc.serverBody, 0)
 				t.Cleanup(server.Close)
 				forwardURLs = []string{server.URL}
 			}
@@ -512,103 +496,96 @@ func TestForwardRequests_HTTPHandler(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest("GET", "/forward", http.NoBody)
 
+			if tc.cancelCtx {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				c.Request = c.Request.WithContext(ctx)
+			}
+
 			handler.ForwardRequests(c)
 
-			assertJSONResponse(t, w, tc.wantStatus, tc.wantRespKey)
-			testLog.assertContains(t, tc.wantLog)
+			if w.Code != tc.wantStatus {
+				t.Errorf("status = %v, want %v", w.Code, tc.wantStatus)
+			}
+
+			var resp map[string]any
+			if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("failed to parse JSON response: %v", err)
+			}
+
+			if _, ok := resp[tc.wantRespKey]; !ok {
+				t.Errorf("response missing %q key: %v", tc.wantRespKey, resp)
+			}
 		})
 	}
 }
 
 func TestForwardRequests_Logging(t *testing.T) {
 	t.Parallel()
-
 	gin.SetMode(gin.TestMode)
 
-	t.Run("logs errors on upstream failure", func(t *testing.T) {
-		t.Parallel()
+	tests := map[string]struct {
+		serverStatus       int
+		serverBody         string
+		forwardURLs        []string
+		wantLogContains    []string
+		wantLogNotContains []string
+	}{
+		"logs batch lifecycle on success": {
+			serverStatus:    200,
+			serverBody:      "ok",
+			wantLogContains: []string{"Starting forward batch", "Forward batch completed"},
+		},
+		"logs upstream errors": {
+			serverStatus:    500,
+			serverBody:      "internal error",
+			wantLogContains: []string{"Upstream returned error status"},
+		},
+		"logs batch error on cancellation": {
+			serverStatus:    200,
+			serverBody:      "ok",
+			forwardURLs:     []string{"http://will-be-cancelled"},
+			wantLogContains: []string{"Batch processing failed"},
+		},
+	}
 
-		testLog := newTestLogger()
-		handler, _ := newTestHandler(t, &http.Client{Timeout: 5 * time.Second}, testLog.Logger)
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-		server := newTestServer(t, 500, "internal error", 0)
-		t.Cleanup(server.Close)
+			testLog := newTestLogger()
 
-		handler.config.ForwardURLs = []string{server.URL}
+			forwardURLs := tc.forwardURLs
+			cancelCtx := false
+			if forwardURLs != nil {
+				cancelCtx = true
+			} else {
+				server := newTestServer(t, tc.serverStatus, tc.serverBody, 0)
+				t.Cleanup(server.Close)
+				forwardURLs = []string{server.URL}
+			}
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/forward", http.NoBody)
+			handler, _ := newTestHandler(t, &http.Client{Timeout: 5 * time.Second}, testLog.Logger)
+			handler.config.ForwardURLs = forwardURLs
 
-		handler.ForwardRequests(c)
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest("GET", "/forward", http.NoBody)
 
-		// Should still complete successfully but log the error
-		assertJSONResponse(t, w, 200, "results")
-	})
+			if cancelCtx {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				c.Request = c.Request.WithContext(ctx)
+			}
 
-	t.Run("logs forward batch start info", func(t *testing.T) {
-		t.Parallel()
+			handler.ForwardRequests(c)
 
-		testLog := newTestLogger()
-		handler, _ := newTestHandler(t, &http.Client{Timeout: 5 * time.Second}, testLog.Logger)
-
-		server := newTestServer(t, 200, "ok", 0)
-		t.Cleanup(server.Close)
-
-		handler.config.ForwardURLs = []string{server.URL}
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/forward", http.NoBody)
-
-		handler.ForwardRequests(c)
-
-		testLog.assertContains(t, "Starting forward batch")
-		testLog.assertContains(t, "Forward batch completed")
-	})
-}
-
-func TestForwardRequests_BatchError(t *testing.T) {
-	t.Parallel()
-
-	gin.SetMode(gin.TestMode)
-
-	t.Run("returns error when context cancelled before batch", func(t *testing.T) {
-		t.Parallel()
-
-		testLog := newTestLogger()
-		handler, _ := newTestHandler(t, &http.Client{Timeout: 5 * time.Second}, testLog.Logger)
-
-		server := newTestServer(t, 200, "ok", 0)
-		t.Cleanup(server.Close)
-
-		handler.config.ForwardURLs = []string{server.URL}
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-
-		// Create a cancelled context
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-		c.Request = httptest.NewRequest("GET", "/forward", http.NoBody)
-		c.Request = c.Request.WithContext(ctx)
-
-		handler.ForwardRequests(c)
-
-		// Should return 500 error
-		if w.Code != http.StatusInternalServerError {
-			t.Errorf("status = %v, want %v", w.Code, http.StatusInternalServerError)
-		}
-
-		var resp map[string]any
-		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-			t.Fatalf("failed to parse JSON response: %v", err)
-		}
-
-		if _, ok := resp["error"]; !ok {
-			t.Error("response missing 'error' key")
-		}
-
-		testLog.assertContains(t, "Batch processing failed")
-	})
+			for _, want := range tc.wantLogContains {
+				testLog.assertContains(t, want)
+			}
+			for _, notWant := range tc.wantLogNotContains {
+				testLog.assertNotContains(t, notWant)
+			}
+		})
+	}
 }
