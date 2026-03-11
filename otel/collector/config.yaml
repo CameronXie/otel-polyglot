@@ -1,0 +1,76 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+        tls:
+          cert_file: /etc/otel/certs/otel-collector.crt
+          key_file: /etc/otel/certs/otel-collector.key
+      http:
+        endpoint: 0.0.0.0:4318
+        tls:
+          cert_file: /etc/otel/certs/otel-collector.crt
+          key_file: /etc/otel/certs/otel-collector.key
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+    path: "/health"
+    response_body:
+      healthy: "OK"
+      unhealthy: "Service Unavailable"
+
+processors:
+  batch:
+
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 15
+
+exporters:
+  debug:
+    verbosity: detailed
+
+  otlphttp/metrics:
+    endpoint: http://localhost:9090/api/v1/otlp
+    tls:
+      insecure: true
+
+  otlphttp/traces:
+    endpoint: http://localhost:4418
+    tls:
+      insecure: true
+
+  otlphttp/logs:
+    endpoint: http://localhost:3100/otlp
+    tls:
+      insecure: true
+
+  otlphttp/pyroscope:
+    endpoint: http://localhost:4040/otlp
+    tls:
+      insecure: true
+
+service:
+  extensions: [ health_check ]
+
+  pipelines:
+    traces:
+      receivers: [ otlp ]
+      processors: [ memory_limiter, batch ]
+      exporters: [ otlphttp/traces, debug ]
+
+    metrics:
+      receivers: [ otlp ]
+      processors: [ memory_limiter, batch ]
+      exporters: [ otlphttp/metrics, debug ]
+
+    logs:
+      receivers: [ otlp ]
+      processors: [ memory_limiter, batch ]
+      exporters: [ otlphttp/logs, debug ]
+
+    profiles:
+      receivers: [ otlp ]
+      exporters: [ otlphttp/pyroscope, debug ]
