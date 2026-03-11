@@ -1,5 +1,7 @@
 # OTel Polyglot
 
+[![CI](https://github.com/CameronXie/otel-polyglot/actions/workflows/ci.yaml/badge.svg)](https://github.com/CameronXie/otel-polyglot/actions/workflows/ci.yaml)
+
 A polyglot project for validating OpenTelemetry SDK implementations across multiple
 languages. Each service implements an identical API surface and emits the same telemetry
 signals, enabling direct comparison of instrumentation patterns and consistent evaluation
