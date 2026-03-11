@@ -40,6 +40,10 @@ type ForwardResult struct {
 - Use `map[string]struct{}` for table-driven tests (named cases)
 - Use `t.Helper()` in assertion helper functions
 
+### When to Merge vs Separate
+- **Merge**: Same function, varying inputs → table-driven
+- **Separate**: Different functions, tests needing isolation, or when test cases need mostly different struct fields
+
 ## Comment Guidelines
 - Exported functions/types: doc comment starting with name
 - Explain "why", not "what" (code shows what)
