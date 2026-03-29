@@ -103,6 +103,7 @@ func (h *Handler) forwardBatch(ctx context.Context) ([]ForwardResult, error) {
 func (h *Handler) forwardSingle(ctx context.Context, rawURL string) ForwardResult {
 	url, err := neturl.Parse(strings.TrimSpace(rawURL))
 	if err != nil {
+		h.logger.ErrorContext(ctx, "Unexpected error in forward task", slog.Any("error", err))
 		return ForwardResult{
 			URL:   rawURL,
 			Error: "invalid url",

@@ -44,6 +44,7 @@ func run() error {
 		return fmt.Errorf("validate config: %w", err)
 	}
 
+	slog.SetLogLoggerLevel(config.LogLevel)
 	slog.Info("Starting service", slog.String("port", config.Port)) //nolint:gosec // G706
 
 	shutdown, err := InitOtel(ctx, config)

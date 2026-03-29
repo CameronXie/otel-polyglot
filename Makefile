@@ -5,7 +5,7 @@ TLS_KEY := $(CERTS_DIR)/otel-collector.key
 TLS_CA := $(CERTS_DIR)/ca.crt
 
 # Services to test (add new services here - must match docker-compose service name)
-SERVICES := go-gin
+SERVICES := go-gin py-fastapi
 
 ## help: Display this help message
 .PHONY: help
@@ -21,7 +21,7 @@ up: create-dev-env generate-certs
 		profiles="$$(echo "$(PROFILES)" | tr ',' ' ') default"; \
 	fi; \
 	echo "Starting development environment (profiles: $$profiles)..."; \
-	docker compose $$(for p in $$profiles; do echo "--profile $$p"; done) up --build -d
+	docker compose $$(for p in $$profiles; do echo "--profile $$p"; done) up --remove-orphans --build -d
 
 ## down: Stop all containers
 .PHONY: down

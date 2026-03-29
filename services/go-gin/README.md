@@ -58,7 +58,7 @@ both are set.
 | Port         | `--port`         | `GO_GIN_PORT`                                | `8080`            | Server listen port                        |
 | Forward URLs | `--forward-urls` | `GO_GIN_FORWARD_URLS`                        | None              | Comma-separated URLs for forward endpoint |
 | Service Name | `--service-name` | `GO_GIN_SERVICE_NAME` or `OTEL_SERVICE_NAME` | `unknown_service` | OpenTelemetry resource service name       |
-| Environment  | `--environment`  | `GO_GIN_ENVIRONMENT`                         | `development`     | Deployment environment identifier         |
+| Log Level    | `--log-level`    | `GO_GIN_LOG_LEVEL`                           | `info`            | Log level (debug, info, warn, error)      |
 
 ### OTLP Environment Variables
 

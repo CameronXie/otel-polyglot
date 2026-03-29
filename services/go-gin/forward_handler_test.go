@@ -242,14 +242,17 @@ func TestForwardSingle(t *testing.T) {
 		serverDelay      time.Duration
 		cancelCtx        bool
 		wantErrSubstring string
+		wantLogContains  string
 	}{
 		"invalid url format with bad scheme": {
 			rawURL:           "://invalid-url",
 			wantErrSubstring: "invalid url",
+			wantLogContains:  "Unexpected error in forward task",
 		},
 		"invalid url with space": {
 			rawURL:           "http://example .com",
 			wantErrSubstring: "invalid url",
+			wantLogContains:  "Unexpected error in forward task",
 		},
 		"empty url": {
 			rawURL:           "",
@@ -275,6 +278,8 @@ func TestForwardSingle(t *testing.T) {
 			var targetURL string
 			var client *http.Client
 
+			testLog := newTestLogger()
+
 			if tc.useServer {
 				server := newTestServer(t, tc.serverStatus, "ok", tc.serverDelay)
 				t.Cleanup(server.Close)
@@ -285,7 +290,7 @@ func TestForwardSingle(t *testing.T) {
 				client = &http.Client{}
 			}
 
-			handler, _ := newTestHandler(t, client, nil)
+			handler, _ := newTestHandler(t, client, testLog.Logger)
 
 			ctx := context.Background()
 			if tc.cancelCtx {
@@ -309,6 +314,11 @@ func TestForwardSingle(t *testing.T) {
 			// Parse errors don't incur network delay
 			if tc.wantErrSubstring != "invalid url" && result.Duration <= 0 {
 				t.Errorf("Duration = %v, want > 0", result.Duration)
+			}
+
+			// Verify log message if specified
+			if tc.wantLogContains != "" {
+				testLog.assertContains(t, tc.wantLogContains)
 			}
 		})
 	}

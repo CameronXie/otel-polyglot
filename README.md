@@ -115,20 +115,20 @@ instrument names, and log export mechanisms must match across all implementation
 
 #### Traces
 
-| Span Name         | Kind     | Description                                     |
-|-------------------|----------|-------------------------------------------------|
-| HTTP server spans | Server   | Auto-instrumented by the framework middleware   |
-| `forward.batch`   | Internal | Parent span covering the entire batch operation |
-| `forward.request` | Client   | One child span per forwarded URL                |
+| Endpoint   | Span Name         | Kind     | Description                                     |
+|------------|-------------------|----------|-------------------------------------------------|
+| All        | HTTP server spans | Server   | Auto-instrumented by the framework middleware   |
+| `/forward` | `forward.batch`   | Internal | Parent span covering the entire batch operation |
+| `/forward` | `forward.request` | Client   | One child span per forwarded URL                |
 
 Context propagation: W3C Trace Context, W3C Baggage.
 
 #### Metrics
 
-| Name               | Type      | Unit | Attributes                     |
-|--------------------|-----------|------|--------------------------------|
-| `forward.requests` | Counter   | `1`  | `server.address`, `url.scheme` |
-| `forward.duration` | Histogram | `s`  | `server.address`, `url.scheme` |
+| Endpoint   | Name               | Type      | Unit | Attributes                     |
+|------------|--------------------|-----------|------|--------------------------------|
+| `/forward` | `forward.requests` | Counter   | `1`  | `server.address`, `url.scheme` |
+| `/forward` | `forward.duration` | Histogram | `s`  | `server.address`, `url.scheme` |
 
 Histogram bucket boundaries (seconds):
 `0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10`
@@ -138,6 +138,16 @@ Histogram bucket boundaries (seconds):
 Structured logs exported via OTLP. Every log record must include the active trace and
 span ID for correlation with distributed traces.
 
+| Endpoint   | Message                          | Level | Context                  | Attributes                  |
+|------------|----------------------------------|-------|--------------------------|-----------------------------|
+| `/forward` | `Starting forward batch`         | Info  | Batch operation started  | `url.count`, `baggage`      |
+| `/forward` | `Forward batch completed`        | Info  | Batch succeeded          | `results.count`             |
+| `/forward` | `Batch processing failed`        | Error | Batch failed             | `error`                     |
+| `/forward` | `Failed to execute request`      | Error | HTTP request failed      | `error`                     |
+| `/forward` | `Unexpected error in forward task` | Error | Unexpected exception   | `error`                     |
+| `/forward` | `Upstream returned error status` | Warn  | Upstream HTTP 4xx/5xx    | `http.response.status_code` |
+| `/forward` | `Request completed successfully` | Info  | Single request succeeded | —                           |
+
 ## Services
 
 The table below lists available service implementations. Each implements the full
@@ -145,9 +155,10 @@ The table below lists available service implementations. Each implements the ful
 Refer to individual READMEs for language-specific configuration and development
 instructions.
 
-| Service | Language | Framework | Docs                        |
-|---------|----------|-----------|-----------------------------|
-| go-gin  | Go       | Gin       | [README](./services/go-gin) |
+| Service    | Language | Framework | Docs                            |
+|------------|----------|-----------|---------------------------------|
+| go-gin     | Go       | Gin       | [README](./services/go-gin)     |
+| py-fastapi | Python   | FastAPI   | [README](./services/py-fastapi) |
 
 ## Observability Stack
 
@@ -184,7 +195,8 @@ defines a standalone collector configuration for use outside the LGTM image.
 ├── prometheus            # Prometheus scrape configuration
 │   └── prometheus.yaml
 └── services
-    └── go-gin            # Go-Gin implementation
+    ├── go-gin            # Go-Gin implementation
+    └── py-fastapi        # Python-FastAPI implementation
 ```
 
 ## Local Development

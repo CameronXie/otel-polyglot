@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -9,7 +10,6 @@ import (
 
 const (
 	defaultPort = "8080"
-	defaultEnv  = "development"
 )
 
 func TestConfig_GetServiceName(t *testing.T) {
@@ -61,61 +61,71 @@ func TestLoadConfig(t *testing.T) {
 		envVars        map[string]string
 		wantPort       string
 		wantService    string
-		wantEnv        string
 		wantForwardURL []string
+		wantLogLevel   slog.Level
 		wantErr        bool
 		wantErrContain string
 	}{
 		"default values": {
 			args:     []string{},
 			wantPort: defaultPort,
-			wantEnv:  defaultEnv,
 		},
 		"custom port via flag": {
 			args:     []string{"--port=9090"},
 			wantPort: "9090",
-			wantEnv:  defaultEnv,
 		},
 		"custom port via env": {
 			args:     []string{},
 			envVars:  map[string]string{"GO_GIN_PORT": "3000"},
 			wantPort: "3000",
-			wantEnv:  defaultEnv,
 		},
 		"service name via flag": {
 			args:        []string{"--service-name=my-service"},
 			wantPort:    defaultPort,
 			wantService: "my-service",
-			wantEnv:     defaultEnv,
-		},
-		"environment via flag": {
-			args:     []string{"--environment=production"},
-			wantPort: defaultPort,
-			wantEnv:  "production",
 		},
 		"forward URLs via flag": {
 			args:           []string{"--forward-urls=http://a.com,http://b.com"},
 			wantPort:       defaultPort,
-			wantEnv:        defaultEnv,
 			wantForwardURL: []string{"http://a.com", "http://b.com"},
 		},
 		"all values via env": {
 			args:        []string{},
-			envVars:     map[string]string{"GO_GIN_PORT": "5000", "GO_GIN_SERVICE_NAME": "env-service", "GO_GIN_ENVIRONMENT": "staging"},
+			envVars:     map[string]string{"GO_GIN_PORT": "5000", "GO_GIN_SERVICE_NAME": "env-service"},
 			wantPort:    "5000",
 			wantService: "env-service",
-			wantEnv:     "staging",
+		},
+		"forward URLs via env": {
+			args:           []string{},
+			envVars:        map[string]string{"GO_GIN_FORWARD_URLS": "http://a.com,http://b.com"},
+			wantPort:       defaultPort,
+			wantForwardURL: []string{"http://a.com", "http://b.com"},
 		},
 		"flag takes precedence over env": {
 			args:     []string{"--port=9090"},
 			envVars:  map[string]string{"GO_GIN_PORT": "3000"},
 			wantPort: "9090",
-			wantEnv:  defaultEnv,
 		},
 		"unknown flag returns error": {
 			args:           []string{"--unknown-flag"},
 			wantErr:        true,
 			wantErrContain: "unknown-flag",
+		},
+		"log level via flag": {
+			args:         []string{"--log-level=debug"},
+			wantPort:     defaultPort,
+			wantLogLevel: slog.LevelDebug,
+		},
+		"log level via env": {
+			args:         []string{},
+			envVars:      map[string]string{"GO_GIN_LOG_LEVEL": "error"},
+			wantPort:     defaultPort,
+			wantLogLevel: slog.LevelError,
+		},
+		"invalid log level returns error": {
+			args:           []string{"--log-level=invalid"},
+			wantErr:        true,
+			wantErrContain: "log_level must be one of",
 		},
 	}
 
@@ -147,13 +157,83 @@ func TestLoadConfig(t *testing.T) {
 			if tc.wantService != "" && config.ServiceName != tc.wantService {
 				t.Errorf("ServiceName = %q, want %q", config.ServiceName, tc.wantService)
 			}
-			if config.Environment != tc.wantEnv {
-				t.Errorf("Environment = %q, want %q", config.Environment, tc.wantEnv)
-			}
 			if tc.wantForwardURL != nil {
 				if diff := cmp.Diff(tc.wantForwardURL, config.ForwardURLs); diff != "" {
 					t.Errorf("ForwardURLs mismatch (-want +got):\n%s", diff)
 				}
+			}
+			if tc.wantLogLevel != 0 && config.LogLevel != tc.wantLogLevel {
+				t.Errorf("LogLevel = %v, want %v", config.LogLevel, tc.wantLogLevel)
+			}
+		})
+	}
+}
+
+func TestParseLogLevel(t *testing.T) {
+	tests := map[string]struct {
+		input       string
+		wantLevel   slog.Level
+		wantErr     bool
+		errContains string
+	}{
+		"debug": {
+			input:     "debug",
+			wantLevel: slog.LevelDebug,
+		},
+		"info": {
+			input:     "info",
+			wantLevel: slog.LevelInfo,
+		},
+		"warn": {
+			input:     "warn",
+			wantLevel: slog.LevelWarn,
+		},
+		"error": {
+			input:     "error",
+			wantLevel: slog.LevelError,
+		},
+		"case insensitive": {
+			input:     "DEBUG",
+			wantLevel: slog.LevelDebug,
+		},
+		"mixed case": {
+			input:     "WaRn",
+			wantLevel: slog.LevelWarn,
+		},
+		"invalid level": {
+			input:       "invalid",
+			wantLevel:   slog.LevelInfo,
+			wantErr:     true,
+			errContains: "log_level must be one of",
+		},
+		"empty string": {
+			input:       "",
+			wantLevel:   slog.LevelInfo,
+			wantErr:     true,
+			errContains: "log_level must be one of",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, err := parseLogLevel(tc.input)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("parseLogLevel() expected error containing %q, got nil", tc.errContains)
+				}
+				if !strings.Contains(err.Error(), tc.errContains) {
+					t.Errorf("parseLogLevel() error = %q, want containing %q", err.Error(), tc.errContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("parseLogLevel() unexpected error: %v", err)
+			}
+
+			if got != tc.wantLevel {
+				t.Errorf("parseLogLevel() = %v, want %v", got, tc.wantLevel)
 			}
 		})
 	}
