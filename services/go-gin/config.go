@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"strconv"
@@ -16,7 +17,7 @@ type Config struct {
 	Port        string
 	ForwardURLs []string
 	ServiceName string
-	Environment string
+	LogLevel    slog.Level
 }
 
 // LoadConfig loads configuration from flags and environment variables.
@@ -25,7 +26,7 @@ func LoadConfig(args []string) (*Config, error) {
 	flagSet.String("port", "8080", "Server port")
 	flagSet.StringSlice("forward-urls", []string{}, "List of URLs to forward requests (GET is assumed)")
 	flagSet.String("service-name", "", "Service name (defaults to OTEL_SERVICE_NAME env var)")
-	flagSet.String("environment", "development", "Environment name (e.g., development, production)")
+	flagSet.String("log-level", "info", "Log level (debug, info, warn, error)")
 
 	if err := flagSet.Parse(args); err != nil {
 		return nil, fmt.Errorf("failed to parse flags: %w", err)
@@ -40,12 +41,45 @@ func LoadConfig(args []string) (*Config, error) {
 	v.AutomaticEnv()
 	v.SetEnvPrefix("GO_GIN")
 
+	logLevel, err := parseLogLevel(v.GetString("log-level"))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Port:        v.GetString("port"),
-		ForwardURLs: v.GetStringSlice("forward-urls"),
+		ForwardURLs: parseStringSlice(v.GetStringSlice("forward-urls")),
 		ServiceName: v.GetString("service-name"),
-		Environment: v.GetString("environment"),
+		LogLevel:    logLevel,
 	}, nil
+}
+
+// parseStringSlice works around viper#380: GetStringSlice parses CLI flags
+// as comma-separated but env vars as space-separated.
+func parseStringSlice(slice []string) []string {
+	if len(slice) == 1 && strings.Contains(slice[0], ",") {
+		return strings.Split(slice[0], ",")
+	}
+	return slice
+}
+
+// parseLogLevel converts a string log level to slog.Level.
+func parseLogLevel(level string) (slog.Level, error) {
+	validLevels := map[string]slog.Level{
+		"debug": slog.LevelDebug,
+		"info":  slog.LevelInfo,
+		"warn":  slog.LevelWarn,
+		"error": slog.LevelError,
+	}
+
+	if l, ok := validLevels[strings.ToLower(level)]; ok {
+		return l, nil
+	}
+	validKeys := make([]string, 0, len(validLevels))
+	for k := range validLevels {
+		validKeys = append(validKeys, k)
+	}
+	return slog.LevelInfo, fmt.Errorf("log_level must be one of: %s", strings.Join(validKeys, ", "))
 }
 
 // GetServiceName returns the service name, falling back to OTEL_SERVICE_NAME env var or "unknown_service".

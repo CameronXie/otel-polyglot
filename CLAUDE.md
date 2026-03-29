@@ -27,7 +27,7 @@ make docker-build-go-gin    # Build go-gin Docker image (ARCH=amd64 for x86_64)
 
 All services must implement:
 
-- `GET /health`, `GET /ready`, `GET /forward`
+- `GET /health`, `GET /forward`
 - Traces: auto-instrumented HTTP spans + `forward.batch`, `forward.request`
 - Metrics: `forward.requests` (counter), `forward.duration` (histogram)
 - Logs: structured logs exported via OTLP with trace correlation
