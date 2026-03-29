@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/CameronXie/otel-polyglot/compare/v1.1.0...v1.2.0) (2026-03-29)
+
+
+### Features
+
+* **py-fastapi:** add release configuration ([#6](https://github.com/CameronXie/otel-polyglot/issues/6)) ([0a8c093](https://github.com/CameronXie/otel-polyglot/commit/0a8c093e1a5c4ca4d09a67df4d6666f2d39202f0))
+
 ## [1.1.0](https://github.com/CameronXie/otel-polyglot/compare/v1.0.0...v1.1.0) (2026-03-29)
 
 
