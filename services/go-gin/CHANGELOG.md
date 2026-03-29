@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/CameronXie/otel-polyglot/compare/go-gin-v1.0.0...go-gin-v1.1.0) (2026-03-29)
+
+
+### Features
+
+* add py-fastapi service with OpenTelemetry instrumentation ([#4](https://github.com/CameronXie/otel-polyglot/issues/4)) ([ab39f6c](https://github.com/CameronXie/otel-polyglot/commit/ab39f6c517a6896259c03282f2359ed98a3ef77b))
+
 ## 1.0.0 (2026-03-11)
 
 
