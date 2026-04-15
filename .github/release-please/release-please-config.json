@@ -5,6 +5,10 @@
     ".": {
       "release-type": "simple"
     },
+    "mcp/ts": {
+      "component": "ts-mcp",
+      "release-type": "node"
+    },
     "services/go-gin": {
       "component": "go-gin",
       "release-type": "go"

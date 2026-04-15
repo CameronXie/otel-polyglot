@@ -3,7 +3,7 @@
 Python API service built with [FastAPI](https://fastapi.tiangolo.com/) and instrumented
 with OpenTelemetry for traces, metrics, and logs. Implements the
 [service specification](../../README.md#service-specification) and emits all required
-[telemetry signals](../../README.md#telemetry-signals).
+[telemetry signals](../../README.md#service-telemetry-signals).
 
 Telemetry data is exported via gRPC to an OTLP-compatible collector. Context propagation
 supports W3C Trace Context and Baggage.

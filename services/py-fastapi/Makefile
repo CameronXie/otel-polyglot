@@ -82,8 +82,7 @@ lint:
 .PHONY: security
 security:
 	@echo "Running security scan..."
-	# pygments 2.19.2 Required-by: pytest, py-audit
-	$(UV) run pip-audit --ignore-vuln CVE-2026-4539
+	$(UV) run pip-audit
 
 ## ci: Run all CI checks (format-check, lint, security, test)
 .PHONY: ci
