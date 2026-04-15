@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/CameronXie/otel-polyglot/compare/v1.2.0...v1.3.0) (2026-04-15)
+
+
+### Features
+
+* **mcp:** add TypeScript MCP server with stdio transport ([#8](https://github.com/CameronXie/otel-polyglot/issues/8)) ([4833830](https://github.com/CameronXie/otel-polyglot/commit/483383063d07d804f048ec8590db19095991457e))
+
 ## [1.2.0](https://github.com/CameronXie/otel-polyglot/compare/v1.1.0...v1.2.0) (2026-03-29)
 
 

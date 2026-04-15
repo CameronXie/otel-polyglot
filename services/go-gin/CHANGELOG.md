@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/CameronXie/otel-polyglot/compare/go-gin-v1.1.0...go-gin-v1.2.0) (2026-04-15)
+
+
+### Features
+
+* **mcp:** add TypeScript MCP server with stdio transport ([#8](https://github.com/CameronXie/otel-polyglot/issues/8)) ([4833830](https://github.com/CameronXie/otel-polyglot/commit/483383063d07d804f048ec8590db19095991457e))
+
 ## [1.1.0](https://github.com/CameronXie/otel-polyglot/compare/go-gin-v1.0.0...go-gin-v1.1.0) (2026-03-29)
 
 
