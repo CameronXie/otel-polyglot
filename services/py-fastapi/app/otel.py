@@ -97,7 +97,7 @@ def init_otel(settings: Settings) -> Iterator[None]:
         # Shutdown providers gracefully
         tracer_provider.shutdown()
         meter_provider.shutdown()
-        logger_provider.shutdown()  # type: ignore[no-untyped-call]
+        logger_provider.shutdown()
 
 
 def instrument_fastapi(app: FastAPI) -> None:

@@ -7,6 +7,9 @@ TLS_CA := $(CERTS_DIR)/ca.crt
 # Services to test (add new services here - must match docker-compose service name)
 SERVICES := go-gin py-fastapi
 
+# MCP servers (separate from SERVICES because path differs: mcp/<lang> vs services/<name>)
+MCP_SERVERS := ts-mcp
+
 ## help: Display this help message
 .PHONY: help
 help:
@@ -69,6 +72,10 @@ build:
 		echo "\n=== Building $$service ===" ; \
 		$(MAKE) docker-build-$$service ; \
 	done
+	@for mcp in $(MCP_SERVERS); do \
+		echo "\n=== Building $$mcp ===" ; \
+		$(MAKE) docker-build-mcp-$$mcp ; \
+	done
 
 ## docker-build-%: Build Docker image for a specific service (e.g., make docker-build-go-gin ARCH=amd64)
 .PHONY: docker-build-%
@@ -83,6 +90,10 @@ ci: create-dev-env generate-certs
 		echo "\n=== Checking $$service ===" ; \
 		$(MAKE) ci-$$service || exit 1 ; \
 	done
+	@for mcp in $(MCP_SERVERS); do \
+		echo "\n=== Checking $$mcp ===" ; \
+		$(MAKE) ci-$$mcp || exit 1 ; \
+	done
 	@echo "\n=== All CI checks passed ==="
 
 ## ci-%: Run CI checks for a specific service in Docker (e.g., make ci-go-gin)
@@ -90,6 +101,21 @@ ci: create-dev-env generate-certs
 ci-%:
 	@echo "Running $* CI checks in Docker..."
 	@docker compose --profile $* --profile default run --rm --no-deps --entrypoint "" --build $* make ci
+
+## docker-build-mcp-%: Build Docker image for an MCP server (e.g., make docker-build-mcp-ts-mcp)
+.PHONY: docker-build-mcp-%
+docker-build-mcp-%:
+	@$(eval MCP_LANG := $(shell echo $* | sed 's/-mcp//'))
+	@$(MAKE) -C mcp/$(MCP_LANG) docker-build
+
+## ci-mcp: Run CI checks for all MCP servers
+.PHONY: ci-mcp
+ci-mcp: create-dev-env generate-certs
+	@echo "Running CI checks for all MCP servers..."
+	@for mcp in $(MCP_SERVERS); do \
+		echo "\n=== Checking $$mcp ===" ; \
+		$(MAKE) ci-$$mcp || exit 1 ; \
+	done
 
 ## lint-actions: Lint GitHub Actions workflows
 .PHONY: lint-actions

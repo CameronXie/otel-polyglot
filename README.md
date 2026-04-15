@@ -21,6 +21,11 @@ graph LR
         S3[Service Implementation N]
     end
 
+    subgraph MCP Servers
+        M1[MCP Server A]
+        M2[MCP Server B]
+    end
+
     subgraph Observability Stack
         C[OTel Collector]
         G[Grafana]
@@ -32,6 +37,12 @@ graph LR
     S1 -- OTLP/gRPC --> C
     S2 -- OTLP/gRPC --> C
     S3 -- OTLP/gRPC --> C
+    M1 -- HTTP --> S1
+    M1 -- HTTP --> S2
+    M2 -- HTTP --> S1
+    M2 -- HTTP --> S3
+    M1 -- OTLP/gRPC --> C
+    M2 -- OTLP/gRPC --> C
     C -- traces --> T
     C -- metrics --> P
     C -- logs --> L
@@ -98,7 +109,7 @@ response rather than failing the entire batch.
 }
 ```
 
-### Telemetry Signals
+### Service Telemetry Signals
 
 Every service must emit the following OpenTelemetry signals. Span names, metric
 instrument names, and log export mechanisms must match across all implementations.
@@ -111,7 +122,7 @@ instrument names, and log export mechanisms must match across all implementation
 | Metrics | `forward.duration`                 | Histogram — outbound request duration (s) |
 | Logs    | Application logs                   | Structured logs exported via OTLP         |
 
-### Telemetry Details
+### Service Telemetry Details
 
 #### Traces
 
@@ -138,15 +149,15 @@ Histogram bucket boundaries (seconds):
 Structured logs exported via OTLP. Every log record must include the active trace and
 span ID for correlation with distributed traces.
 
-| Endpoint   | Message                          | Level | Context                  | Attributes                  |
-|------------|----------------------------------|-------|--------------------------|-----------------------------|
-| `/forward` | `Starting forward batch`         | Info  | Batch operation started  | `url.count`, `baggage`      |
-| `/forward` | `Forward batch completed`        | Info  | Batch succeeded          | `results.count`             |
-| `/forward` | `Batch processing failed`        | Error | Batch failed             | `error`                     |
-| `/forward` | `Failed to execute request`      | Error | HTTP request failed      | `error`                     |
-| `/forward` | `Unexpected error in forward task` | Error | Unexpected exception   | `error`                     |
-| `/forward` | `Upstream returned error status` | Warn  | Upstream HTTP 4xx/5xx    | `http.response.status_code` |
-| `/forward` | `Request completed successfully` | Info  | Single request succeeded | —                           |
+| Endpoint   | Message                            | Level | Context                  | Attributes                  |
+|------------|------------------------------------|-------|--------------------------|-----------------------------|
+| `/forward` | `Starting forward batch`           | Info  | Batch operation started  | `url.count`, `baggage`      |
+| `/forward` | `Forward batch completed`          | Info  | Batch succeeded          | `results.count`             |
+| `/forward` | `Batch processing failed`          | Error | Batch failed             | `error`                     |
+| `/forward` | `Failed to execute request`        | Error | HTTP request failed      | `error`                     |
+| `/forward` | `Unexpected error in forward task` | Error | Unexpected exception     | `error`                     |
+| `/forward` | `Upstream returned error status`   | Warn  | Upstream HTTP 4xx/5xx    | `http.response.status_code` |
+| `/forward` | `Request completed successfully`   | Info  | Single request succeeded | —                           |
 
 ## Services
 
@@ -159,6 +170,37 @@ instructions.
 |------------|----------|-----------|---------------------------------|
 | go-gin     | Go       | Gin       | [README](./services/go-gin)     |
 | py-fastapi | Python   | FastAPI   | [README](./services/py-fastapi) |
+
+## MCP Specification
+
+MCP (Model Context Protocol) servers expose tools for AI clients to invoke. In
+this project, those tools call service endpoints over HTTP and emit OTel traces,
+metrics, and logs for each invocation. All MCP server implementations must emit
+the OpenTelemetry signals defined below.
+
+### MCP Telemetry Signals
+
+Metric attributes: `mcp.tool.name` on all instruments; `mcp.tool.status` on
+`mcp.tool.calls` and `mcp.tool.duration`.
+
+| Signal  | Name                | Type            | Description                                      |
+|---------|---------------------|-----------------|--------------------------------------------------|
+| Traces  | `mcp.tool/{name}`   | Internal span   | One span per tool invocation                     |
+| Traces  | HTTP client spans   | Client          | Auto-instrumented fetch() with W3C Trace Context |
+| Metrics | `mcp.tool.calls`    | Counter         | Total tool invocations                           |
+| Metrics | `mcp.tool.duration` | Histogram       | Tool execution duration (ms)                     |
+| Metrics | `mcp.tool.active`   | Up-Down Counter | In-flight tool calls                             |
+| Logs    | Application logs    | OTLP            | Structured logs exported via OTLP                |
+
+## MCP Servers
+
+The table below lists available MCP server implementations. Each emits the
+[MCP telemetry signals](#mcp-telemetry-signals). Refer to individual READMEs
+for language-specific configuration and development instructions.
+
+| Server | Language   | Transport | Docs               |
+|--------|------------|-----------|--------------------|
+| ts-mcp | TypeScript | stdio     | [README](./mcp/ts) |
 
 ## Observability Stack
 
@@ -183,13 +225,16 @@ defines a standalone collector configuration for use outside the LGTM image.
 
 ```
 .
+├── CHANGELOG.md          # Release history
 ├── CLAUDE.md
 ├── Makefile              # Root-level build and orchestration targets
 ├── README.md
 ├── certs                 # TLS certificates (auto-generated by make up)
 ├── docker
-│   └── dev.              # Development container with Claude Code
+│   └── dev               # Development container with Claude Code
 ├── docker-compose.yml    # Service profiles and observability stack
+├── mcp                   # MCP server implementations
+│   └── ts                # TypeScript MCP server
 ├── otel                  # OTel Collector configuration overrides
 │   └── collector
 ├── prometheus            # Prometheus scrape configuration
@@ -218,10 +263,12 @@ for AI-assisted development.
 ```bash
 make up PROFILES=<service>      # Start observability stack and the specified service
 make down                       # Stop and remove all containers
-make ci                         # Run CI checks for all services in Docker
-make ci-<service>               # Run CI checks for a specific service (e.g., make ci-go-gin)
-make build                      # Build Docker images for all services
+make ci                         # Run CI checks for all services and MCP servers in Docker
+make ci-<name>                  # Run CI checks for a service or MCP server (e.g., make ci-go-gin, make ci-ts-mcp)
+make ci-mcp                     # Run CI checks for all MCP servers
+make build                      # Build Docker images for all services and MCP servers
 make docker-build-<service>     # Build Docker image for a single service (e.g., make docker-build-go-gin)
+make docker-build-mcp-<server>  # Build Docker image for an MCP server (e.g., make docker-build-mcp-ts-mcp)
 make lint-actions               # Lint GitHub Actions workflows
 ```
 
