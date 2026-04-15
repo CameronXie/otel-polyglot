@@ -67,7 +67,7 @@ lint:
 
 ## ci: Run all CI checks (format-check, lint, build, test)
 .PHONY: ci
-ci: format-check lint build test
+ci: install format-check lint build test
 
 ## mcp-add: Register this MCP server with Claude Code
 .PHONY: mcp-add
