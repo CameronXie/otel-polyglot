@@ -12,6 +12,14 @@ export const REQUEST_TIMEOUT_MS = 30_000;
 /** Maximum response body size in bytes for forwarded requests. */
 export const MAX_RESPONSE_BYTES = 1_000_000;
 
+/** Supported MCP transport modes. */
+export const TransportType = {
+  Stdio: "stdio",
+  StreamableHttp: "streamable-http",
+} as const;
+
+export type TransportType = (typeof TransportType)[keyof typeof TransportType];
+
 /** A backend service entry, parsed from TS_MCP_SERVICE_URLS (name=url,...). */
 export interface ServiceEntry {
   name: string;
@@ -28,6 +36,11 @@ const configSchema = z.object({
   services: z.string().optional().transform(parseServiceUrls),
   logLevel: z.enum(["DEBUG", "INFO", "WARN", "ERROR"]).default("INFO"),
   deploymentEnv: z.string().default("development"),
+  transport: z
+    .enum([TransportType.Stdio, TransportType.StreamableHttp])
+    .default(TransportType.Stdio),
+  port: z.coerce.number().int().min(1).max(65535).default(8080),
+  host: z.string().default("127.0.0.1"),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -38,6 +51,9 @@ export function loadConfig(env = process.env): Config {
     services: env.TS_MCP_SERVICE_URLS,
     logLevel: env.TS_MCP_LOG_LEVEL,
     deploymentEnv: env.TS_MCP_DEPLOYMENT_ENV ?? env.NODE_ENV,
+    transport: env.TS_MCP_TRANSPORT,
+    port: env.TS_MCP_PORT,
+    host: env.TS_MCP_HOST,
   });
 }
 

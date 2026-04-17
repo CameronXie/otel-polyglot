@@ -8,7 +8,8 @@ OTel demo project.
 ```bash
 make install    # Install dependencies
 make build      # Compile TypeScript to dist/
-make run        # Run the MCP server
+make run        # Run the MCP server (stdio transport)
+make run-http   # Run the MCP server (streamable-http transport)
 make test       # Run tests
 make lint       # Check formatting
 make format     # Format code with prettier
@@ -22,11 +23,13 @@ make ci         # All CI checks
 | `src/index.ts`                    | Entry point: MCP server + OTel + tool reg         |
 | `src/config.ts`                   | Env var configuration with zod                    |
 | `src/otel.ts`                     | OTel SDK init (traces + metrics + logs)           |
+| `src/transport.ts`                | Transport factory (stdio and streamable-http)     |
 | `src/tools/tools.ts`              | `ToolBuilder`, `BuiltTool`, `jsonResult`, helpers |
 | `src/tools/health-check.ts`       | health_check tool                                 |
 | `src/tools/forward-request.ts`    | forward_request tool                              |
 | `src/tools/list-services.ts`      | list_services tool                                |
 | `src/tools/check-connectivity.ts` | check_connectivity tool                           |
+| `tests/transport.test.ts`         | Transport layer tests                             |
 | `tests/tools/`                    | Vitest test files matching src/tools              |
 
 ## OTel Instrumentation Pattern
