@@ -78,6 +78,9 @@ describe("loadConfig", () => {
     expect(config.services).toEqual([]);
     expect(config.logLevel).toBe("INFO");
     expect(config.deploymentEnv).toBe("development");
+    expect(config.transport).toBe("stdio");
+    expect(config.port).toBe(8080);
+    expect(config.host).toBe("127.0.0.1");
   });
 
   it("reads all values from env", () => {
@@ -86,6 +89,9 @@ describe("loadConfig", () => {
       TS_MCP_SERVICE_URLS: "svc=http://localhost:3000",
       TS_MCP_LOG_LEVEL: "DEBUG",
       TS_MCP_DEPLOYMENT_ENV: "staging",
+      TS_MCP_TRANSPORT: "streamable-http",
+      TS_MCP_PORT: "8080",
+      TS_MCP_HOST: "0.0.0.0",
     });
     expect(config.serviceName).toBe("custom");
     expect(config.services).toEqual([
@@ -93,10 +99,22 @@ describe("loadConfig", () => {
     ]);
     expect(config.logLevel).toBe("DEBUG");
     expect(config.deploymentEnv).toBe("staging");
+    expect(config.transport).toBe("streamable-http");
+    expect(config.port).toBe(8080);
+    expect(config.host).toBe("0.0.0.0");
   });
 
   it("throws for invalid log level", () => {
     expect(() => loadConfig({ TS_MCP_LOG_LEVEL: "INVALID" })).toThrow();
+  });
+
+  it("throws for invalid transport", () => {
+    expect(() => loadConfig({ TS_MCP_TRANSPORT: "websocket" })).toThrow();
+  });
+
+  it("throws for out-of-range port", () => {
+    expect(() => loadConfig({ TS_MCP_PORT: "0" })).toThrow();
+    expect(() => loadConfig({ TS_MCP_PORT: "99999" })).toThrow();
   });
 
   it("falls back to NODE_ENV for deploymentEnv", () => {

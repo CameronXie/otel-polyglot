@@ -198,9 +198,9 @@ The table below lists available MCP server implementations. Each emits the
 [MCP telemetry signals](#mcp-telemetry-signals). Refer to individual READMEs
 for language-specific configuration and development instructions.
 
-| Server | Language   | Transport | Docs               |
-|--------|------------|-----------|--------------------|
-| ts-mcp | TypeScript | stdio     | [README](./mcp/ts) |
+| Server | Language   | Transport                    | Docs               |
+|--------|------------|------------------------------|--------------------|
+| ts-mcp | TypeScript | stdio, streamable-http       | [README](./mcp/ts) |
 
 ## Observability Stack
 
