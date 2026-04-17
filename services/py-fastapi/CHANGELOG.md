@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/CameronXie/otel-polyglot/compare/py-fastapi-v0.2.0...py-fastapi-v0.3.0) (2026-04-17)
+
+
+### Features
+
+* **mcp/ts:** add streamable-http transport alongside stdio ([#10](https://github.com/CameronXie/otel-polyglot/issues/10)) ([4dcc8fa](https://github.com/CameronXie/otel-polyglot/commit/4dcc8fa0900b7f95a3ce64e947e3c854601672bf))
+
 ## [0.2.0](https://github.com/CameronXie/otel-polyglot/compare/py-fastapi-v0.1.0...py-fastapi-v0.2.0) (2026-04-15)
 
 

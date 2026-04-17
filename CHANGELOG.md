@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/CameronXie/otel-polyglot/compare/v1.3.0...v1.4.0) (2026-04-17)
+
+
+### Features
+
+* **mcp/ts:** add streamable-http transport alongside stdio ([#10](https://github.com/CameronXie/otel-polyglot/issues/10)) ([4dcc8fa](https://github.com/CameronXie/otel-polyglot/commit/4dcc8fa0900b7f95a3ce64e947e3c854601672bf))
+
 ## [1.3.0](https://github.com/CameronXie/otel-polyglot/compare/v1.2.0...v1.3.0) (2026-04-15)
 
 
