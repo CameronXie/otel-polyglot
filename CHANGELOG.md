@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/CameronXie/otel-polyglot/compare/v1.5.0...v1.6.0) (2026-04-27)
+
+
+### Features
+
+* add cs-aspnet to release-please config for automated releases ([#14](https://github.com/CameronXie/otel-polyglot/issues/14)) ([5c23754](https://github.com/CameronXie/otel-polyglot/commit/5c2375489db3a8303db2b75dec636fa36b6e2e2b))
+
 ## [1.5.0](https://github.com/CameronXie/otel-polyglot/compare/v1.4.0...v1.5.0) (2026-04-27)
 
 
