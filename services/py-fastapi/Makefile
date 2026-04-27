@@ -82,7 +82,8 @@ lint:
 .PHONY: security
 security:
 	@echo "Running security scan..."
-	$(UV) run pip-audit
+	# pip-audit bundles pip 26.0.1 which has CVE-2026-3219; ignore until upstream fixes it
+	$(UV) run pip-audit --ignore-vuln CVE-2026-3219
 
 ## ci: Run all CI checks (format-check, lint, security, test)
 .PHONY: ci

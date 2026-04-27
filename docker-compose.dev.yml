@@ -1,0 +1,11 @@
+services:
+  dev:
+    container_name: otel_polyglot_dev
+    build:
+      context: docker/dev
+    volumes:
+      - '.:/usr/code'
+    working_dir: '/usr/code'
+    env_file:
+      - .env
+    command: [ '/bin/sh', '-c', 'sleep infinity' ]

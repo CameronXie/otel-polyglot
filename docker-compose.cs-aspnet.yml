@@ -1,0 +1,26 @@
+services:
+  cs-aspnet:
+    container_name: otel_polyglot_cs_aspnet
+    build:
+      context: services/cs-aspnet
+      target: dev
+    volumes:
+      - './services/cs-aspnet:/usr/code'
+      - './certs:/etc/otel/certs:ro'
+      - './certs/ca.crt:/usr/local/share/ca-certificates/otel-ca.crt:ro'
+    working_dir: '/usr/code'
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=https://lgtm:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_INSECURE=false
+      # Disabled: OTel .NET SDK: CreateFromPemFile() expects cert+key pair,
+      # but CA trust files are cert-only. Falls back to system trust store instead.
+      # OTEL_EXPORTER_OTLP_CERTIFICATE=/etc/otel/certs/ca.crt
+      - OTEL_LOGS_EXPORTER=otlp
+    env_file:
+      - .env
+    entrypoint: [ '/bin/sh', '-c', 'update-ca-certificates && sleep infinity' ]
+    restart: always
+    depends_on:
+      lgtm:
+        condition: service_started

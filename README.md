@@ -166,10 +166,11 @@ The table below lists available service implementations. Each implements the ful
 Refer to individual READMEs for language-specific configuration and development
 instructions.
 
-| Service    | Language | Framework | Docs                            |
-|------------|----------|-----------|---------------------------------|
-| go-gin     | Go       | Gin       | [README](./services/go-gin)     |
-| py-fastapi | Python   | FastAPI   | [README](./services/py-fastapi) |
+| Service    | Language | Framework    | Docs                            |
+|------------|----------|--------------|---------------------------------|
+| go-gin     | Go       | Gin          | [README](./services/go-gin)     |
+| py-fastapi | Python   | FastAPI      | [README](./services/py-fastapi) |
+| cs-aspnet  | C#       | ASP.NET Core | [README](./services/cs-aspnet)  |
 
 ## MCP Specification
 
@@ -198,9 +199,9 @@ The table below lists available MCP server implementations. Each emits the
 [MCP telemetry signals](#mcp-telemetry-signals). Refer to individual READMEs
 for language-specific configuration and development instructions.
 
-| Server | Language   | Transport                    | Docs               |
-|--------|------------|------------------------------|--------------------|
-| ts-mcp | TypeScript | stdio, streamable-http       | [README](./mcp/ts) |
+| Server | Language   | Transport              | Docs               |
+|--------|------------|------------------------|--------------------|
+| ts-mcp | TypeScript | stdio, streamable-http | [README](./mcp/ts) |
 
 ## Observability Stack
 
@@ -225,6 +226,8 @@ defines a standalone collector configuration for use outside the LGTM image.
 
 ```
 .
+├── .devcontainer         # Dev Container configurations (per-service)
+│   └── cs-aspnet         # Rider + .NET SDK
 ├── CHANGELOG.md          # Release history
 ├── CLAUDE.md
 ├── Makefile              # Root-level build and orchestration targets
@@ -240,6 +243,7 @@ defines a standalone collector configuration for use outside the LGTM image.
 ├── prometheus            # Prometheus scrape configuration
 │   └── prometheus.yaml
 └── services
+    ├── cs-aspnet         # C# ASP.NET Core implementation
     ├── go-gin            # Go-Gin implementation
     └── py-fastapi        # Python-FastAPI implementation
 ```
@@ -249,9 +253,16 @@ defines a standalone collector configuration for use outside the LGTM image.
 The development environment runs entirely in Docker. The root Makefile provides targets
 for starting the observability stack, running individual services, and executing tests.
 
-A standalone development container (`dev` profile) is also available. It mounts the
-full project and includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-for AI-assisted development.
+### Dev Containers
+
+Service-specific Dev Container configurations are provided in `.devcontainer/`. These
+start the service alongside the observability stack in a container with the language SDK
+and tooling pre-installed. Open a configuration with a Dev Container-compatible IDE to get
+a fully configured development environment.
+
+| Service   | Path                      |
+|-----------|---------------------------|
+| cs-aspnet | `.devcontainer/cs-aspnet` |
 
 ### Requirements
 
@@ -261,7 +272,7 @@ for AI-assisted development.
 ### Make Targets
 
 ```bash
-make up PROFILES=<service>      # Start observability stack and the specified service
+make up SERVICES=<service>      # Start observability stack and the specified service
 make down                       # Stop and remove all containers
 make ci                         # Run CI checks for all services and MCP servers in Docker
 make ci-<name>                  # Run CI checks for a service or MCP server (e.g., make ci-go-gin, make ci-ts-mcp)
@@ -272,10 +283,9 @@ make docker-build-mcp-<server>  # Build Docker image for an MCP server (e.g., ma
 make lint-actions               # Lint GitHub Actions workflows
 ```
 
-The `up` target always starts the observability stack (`default` profile). Pass
-`PROFILES=<service>` to additionally start a service container — for example,
-`make up PROFILES=go-gin`. Use `PROFILES=dev` to start the development container
-with Claude Code, or combine profiles with `PROFILES=dev,go-gin`.
+The `up` target always starts the observability stack (lgtm). Pass
+`SERVICES=<service>` to additionally start a service container — for example,
+`make up SERVICES=go-gin`.
 
 ## TLS / Certificates
 
