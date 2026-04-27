@@ -9,6 +9,10 @@
       "component": "ts-mcp",
       "release-type": "node"
     },
+    "services/cs-aspnet": {
+      "component": "cs-aspnet",
+      "release-type": "simple"
+    },
     "services/go-gin": {
       "component": "go-gin",
       "release-type": "go"
