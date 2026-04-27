@@ -1,0 +1,11 @@
+@CsAspNet_HostAddress = http://localhost:8080
+
+GET {{CsAspNet_HostAddress}}/health
+Accept: application/json
+
+###
+
+GET {{CsAspNet_HostAddress}}/forward
+Accept: application/json
+
+###

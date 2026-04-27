@@ -60,7 +60,7 @@ docker run \
 
 ```bash
 # From project root — starts the observability stack and this server
-make up PROFILES=ts-mcp
+make up SERVICES=ts-mcp
 ```
 
 ## Configuration Reference

@@ -44,7 +44,7 @@ docker run -p 8080:8080 \
 
 ```bash
 # From project root — starts the observability stack and this service
-make up PROFILES=py-fastapi
+make up SERVICES=py-fastapi
 ```
 
 ## Configuration Reference

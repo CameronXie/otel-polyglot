@@ -44,7 +44,7 @@ go-gin:latest
 
 ```bash
 # From project root — starts the observability stack and this service
-make up PROFILES=go-gin
+make up SERVICES=go-gin
 ```
 
 ## Configuration Reference

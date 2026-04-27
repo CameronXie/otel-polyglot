@@ -6,7 +6,7 @@ endpoints and telemetry signals in a different language/framework.
 ## Quick Commands (root)
 
 ```
-make up PROFILES=go-gin     # Start observability stack + service
+make up SERVICES=go-gin     # Start observability stack + service
 make down                   # Stop all containers
 make ci                     # Run CI checks for all services in Docker
 make ci-go-gin              # Run go-gin CI checks in Docker

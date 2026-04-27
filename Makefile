@@ -5,9 +5,9 @@ TLS_KEY := $(CERTS_DIR)/otel-collector.key
 TLS_CA := $(CERTS_DIR)/ca.crt
 
 # Services to test (add new services here - must match docker-compose service name)
-SERVICES := go-gin py-fastapi
+ALL_SERVICES := go-gin py-fastapi cs-aspnet
 
-# MCP servers (separate from SERVICES because path differs: mcp/<lang> vs services/<name>)
+# MCP servers (separate from ALL_SERVICES because path differs: mcp/<lang> vs services/<name>)
 MCP_SERVERS := ts-mcp
 
 ## help: Display this help message
@@ -16,21 +16,23 @@ help:
 	@echo "Available targets:"
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/^## /  /'
 
-## up: Start development environment (use PROFILES=go-gin to include services)
+## up: Start development environment (use SERVICES=go-gin to include services)
 .PHONY: up
 up: create-dev-env generate-certs
-	@profiles="default"; \
-	if [ -n "$(PROFILES)" ]; then \
-		profiles="$$(echo "$(PROFILES)" | tr ',' ' ') default"; \
+	@files="-f docker-compose.yml"; \
+	if [ -n "$(SERVICES)" ]; then \
+		for p in $$(echo "$(SERVICES)" | tr ',' ' '); do \
+			files="$$files -f docker-compose.$$p.yml"; \
+		done; \
 	fi; \
-	echo "Starting development environment (profiles: $$profiles)..."; \
-	docker compose $$(for p in $$profiles; do echo "--profile $$p"; done) up --remove-orphans --build -d
+	echo "Starting development environment..."; \
+	docker compose $$files up --remove-orphans --build -d
 
 ## down: Stop all containers
 .PHONY: down
 down:
 	@echo "Stopping development environment..."
-	@docker compose --profile "*" down -v
+	@docker compose down -v --remove-orphans
 
 .PHONY: create-dev-env
 create-dev-env:
@@ -64,43 +66,24 @@ generate-certs:
 		echo "Certificates already exist"; \
 	fi
 
-## build: Build all service Docker images
+## build: Build all service Docker images (use -j for parallel)
 .PHONY: build
-build:
-	@echo "Building all service images..."
-	@for service in $(SERVICES); do \
-		echo "\n=== Building $$service ===" ; \
-		$(MAKE) docker-build-$$service ; \
-	done
-	@for mcp in $(MCP_SERVERS); do \
-		echo "\n=== Building $$mcp ===" ; \
-		$(MAKE) docker-build-mcp-$$mcp ; \
-	done
+build: $(foreach s,$(ALL_SERVICES),docker-build-$(s)) $(foreach m,$(MCP_SERVERS),docker-build-mcp-$(m))
 
 ## docker-build-%: Build Docker image for a specific service (e.g., make docker-build-go-gin ARCH=amd64)
 .PHONY: docker-build-%
 docker-build-%:
 	@$(MAKE) -C services/$* docker-build
 
-## ci: Run CI checks for all services in Docker
+## ci: Run CI checks for all services in Docker (use -j for parallel, e.g., make -j ci)
 .PHONY: ci
-ci: create-dev-env generate-certs
-	@echo "Running CI checks for all services..."
-	@for service in $(SERVICES); do \
-		echo "\n=== Checking $$service ===" ; \
-		$(MAKE) ci-$$service || exit 1 ; \
-	done
-	@for mcp in $(MCP_SERVERS); do \
-		echo "\n=== Checking $$mcp ===" ; \
-		$(MAKE) ci-$$mcp || exit 1 ; \
-	done
-	@echo "\n=== All CI checks passed ==="
+ci: create-dev-env generate-certs $(foreach s,$(ALL_SERVICES),ci-$(s)) $(foreach m,$(MCP_SERVERS),ci-$(m))
 
 ## ci-%: Run CI checks for a specific service in Docker (e.g., make ci-go-gin)
 .PHONY: ci-%
 ci-%:
 	@echo "Running $* CI checks in Docker..."
-	@docker compose --profile $* --profile default run --rm --no-deps --entrypoint "" --build $* make ci
+	@docker compose -f docker-compose.yml -f docker-compose.$*.yml run --rm --no-deps --entrypoint "" --build $* make ci
 
 ## docker-build-mcp-%: Build Docker image for an MCP server (e.g., make docker-build-mcp-ts-mcp)
 .PHONY: docker-build-mcp-%
@@ -108,14 +91,9 @@ docker-build-mcp-%:
 	@$(eval MCP_LANG := $(shell echo $* | sed 's/-mcp//'))
 	@$(MAKE) -C mcp/$(MCP_LANG) docker-build
 
-## ci-mcp: Run CI checks for all MCP servers
+## ci-mcp: Run CI checks for all MCP servers (use -j for parallel)
 .PHONY: ci-mcp
-ci-mcp: create-dev-env generate-certs
-	@echo "Running CI checks for all MCP servers..."
-	@for mcp in $(MCP_SERVERS); do \
-		echo "\n=== Checking $$mcp ===" ; \
-		$(MAKE) ci-$$mcp || exit 1 ; \
-	done
+ci-mcp: create-dev-env generate-certs $(foreach m,$(MCP_SERVERS),ci-$(m))
 
 ## lint-actions: Lint GitHub Actions workflows
 .PHONY: lint-actions
