@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/CameronXie/otel-polyglot/compare/py-fastapi-v0.3.0...py-fastapi-v0.4.0) (2026-04-27)
+
+
+### Features
+
+* add cs-aspnet service and dev container configuration ([#12](https://github.com/CameronXie/otel-polyglot/issues/12)) ([e71d25b](https://github.com/CameronXie/otel-polyglot/commit/e71d25b62fa8f1e0a64eff976ee6693c7078f1a7))
+
 ## [0.3.0](https://github.com/CameronXie/otel-polyglot/compare/py-fastapi-v0.2.0...py-fastapi-v0.3.0) (2026-04-17)
 
 
