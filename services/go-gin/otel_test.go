@@ -60,6 +60,7 @@ func TestInitOtel(t *testing.T) {
 	tests := map[string]struct {
 		config    *Config
 		wantError bool
+		protocol  string
 	}{
 		"initializes all providers": {
 			config: &Config{
@@ -67,6 +68,7 @@ func TestInitOtel(t *testing.T) {
 				Port:        "8080",
 			},
 			wantError: false,
+			protocol:  "grpc",
 		},
 		"initializes with empty service name": {
 			config: &Config{
@@ -74,15 +76,35 @@ func TestInitOtel(t *testing.T) {
 				Port:        "8080",
 			},
 			wantError: false,
+			protocol:  "grpc",
 		},
 		"nil config returns error": {
 			config:    nil,
 			wantError: true,
 		},
+		"uses http/protobuf protocol": {
+			config: &Config{
+				ServiceName: "test-service",
+				Port:        "8080",
+			},
+			wantError: false,
+			protocol:  "http/protobuf",
+		},
+		"default protocol when env unset": {
+			config: &Config{
+				ServiceName: "test-service",
+				Port:        "8080",
+			},
+			wantError: false,
+		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			if tc.protocol != "" {
+				t.Setenv("OTEL_EXPORTER_OTLP_PROTOCOL", tc.protocol)
+			}
+
 			shutdown, err := InitOtel(context.Background(), tc.config)
 
 			if (err != nil) != tc.wantError {
