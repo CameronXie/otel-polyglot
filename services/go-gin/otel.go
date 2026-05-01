@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"go.opentelemetry.io/contrib/exporters/autoexport"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -85,9 +83,9 @@ func newResource(ctx context.Context, config *Config) (*resource.Resource, error
 }
 
 func newTracerProvider(ctx context.Context, res *resource.Resource) (*sdktrace.TracerProvider, error) {
-	exporter, err := otlptracegrpc.New(ctx)
+	exporter, err := autoexport.NewSpanExporter(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("create exporter: %w", err)
+		return nil, fmt.Errorf("create span exporter: %w", err)
 	}
 
 	return sdktrace.NewTracerProvider(
@@ -97,21 +95,21 @@ func newTracerProvider(ctx context.Context, res *resource.Resource) (*sdktrace.T
 }
 
 func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
-	exporter, err := otlpmetricgrpc.New(ctx)
+	reader, err := autoexport.NewMetricReader(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("create exporter: %w", err)
+		return nil, fmt.Errorf("create metric reader: %w", err)
 	}
 
 	return sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(res),
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter)),
+		sdkmetric.WithReader(reader),
 	), nil
 }
 
 func newLoggerProvider(ctx context.Context, res *resource.Resource) (*sdklog.LoggerProvider, error) {
-	exporter, err := otlploggrpc.New(ctx)
+	exporter, err := autoexport.NewLogExporter(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("create exporter: %w", err)
+		return nil, fmt.Errorf("create log exporter: %w", err)
 	}
 
 	return sdklog.NewLoggerProvider(
