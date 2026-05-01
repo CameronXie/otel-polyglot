@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/CameronXie/otel-polyglot/compare/v1.6.0...v1.7.0) (2026-05-01)
+
+
+### Features
+
+* use autoexport for dynamic OTLP protocol selection in go-gin ([#16](https://github.com/CameronXie/otel-polyglot/issues/16)) ([5145415](https://github.com/CameronXie/otel-polyglot/commit/51454159e77c3c55cbc800b7b94bfce55e6cf60f))
+
 ## [1.6.0](https://github.com/CameronXie/otel-polyglot/compare/v1.5.0...v1.6.0) (2026-04-27)
 
 
