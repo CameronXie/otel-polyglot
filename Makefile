@@ -12,7 +12,7 @@ TLS_CA := $(CERTS_DIR)/ca.crt
 ALL_SERVICES := go-gin py-fastapi cs-aspnet
 
 # MCP servers (separate from ALL_SERVICES because path differs: mcp/<lang> vs services/<name>)
-MCP_SERVERS := ts
+MCP_SERVERS := ts-mcp
 
 ## help: Display this help message
 .PHONY: help
@@ -74,10 +74,11 @@ generate-certs:
 .PHONY: build
 build: $(foreach s,$(ALL_SERVICES),docker-build-$(s)) $(foreach m,$(MCP_SERVERS),docker-build-mcp-$(m))
 
-## docker-build-mcp-%: Build Docker image for an MCP server (e.g., make docker-build-mcp-ts)
+## docker-build-mcp-%: Build Docker image for an MCP server (e.g., make docker-build-mcp-ts-mcp)
 .PHONY: docker-build-mcp-%
 docker-build-mcp-%:
-	@$(MAKE) -C mcp/$* docker-build
+	@$(eval MCP_LANG := $(shell echo $* | sed 's/-mcp//'))
+	@$(MAKE) -C mcp/$(MCP_LANG) docker-build
 
 ## docker-build-%: Build Docker image for a specific service (e.g., make docker-build-go-gin ARCH=amd64)
 .PHONY: docker-build-%
