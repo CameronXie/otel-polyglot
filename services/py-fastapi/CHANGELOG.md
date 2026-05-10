@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/CameronXie/otel-polyglot/compare/py-fastapi-v0.4.0...py-fastapi-v0.5.0) (2026-05-10)
+
+
+### Features
+
+* add docker publish targets and local LGTM integration tests ([#18](https://github.com/CameronXie/otel-polyglot/issues/18)) ([d117338](https://github.com/CameronXie/otel-polyglot/commit/d117338ea72dd6ec8749b189b5c8996af84a2168))
+
 ## [0.4.0](https://github.com/CameronXie/otel-polyglot/compare/py-fastapi-v0.3.0...py-fastapi-v0.4.0) (2026-04-27)
 
 

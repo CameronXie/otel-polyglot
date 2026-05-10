@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/CameronXie/otel-polyglot/compare/v1.7.0...v1.8.0) (2026-05-10)
+
+
+### Features
+
+* add docker publish targets and local LGTM integration tests ([#18](https://github.com/CameronXie/otel-polyglot/issues/18)) ([d117338](https://github.com/CameronXie/otel-polyglot/commit/d117338ea72dd6ec8749b189b5c8996af84a2168))
+
 ## [1.7.0](https://github.com/CameronXie/otel-polyglot/compare/v1.6.0...v1.7.0) (2026-05-01)
 
 
