@@ -34,12 +34,18 @@ RUN set -eux \
 
 FROM dev AS builder
 
+ARG VERSION=dev
+
 WORKDIR /usr/code
 COPY . .
 
-RUN make build
+RUN make build VERSION=${VERSION}
 
-FROM gcr.io/distroless/static-debian13:nonroot AS runtime
+FROM debian:trixie-slim AS runtime
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/code/dist/go-gin /bin/go-gin
 

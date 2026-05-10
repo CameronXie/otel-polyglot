@@ -1,0 +1,68 @@
+services:
+  go-gin:
+    image: go-gin:latest
+    container_name: otel_polyglot_go_gin
+    platform: linux/amd64
+    volumes:
+      - './certs:/etc/otel/certs:ro'
+      - './certs/ca.crt:/usr/local/share/ca-certificates/otel-ca.crt:ro'
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=https://lgtm:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_INSECURE=false
+      - OTEL_EXPORTER_OTLP_CERTIFICATE=/etc/otel/certs/ca.crt
+      - OTEL_LOGS_EXPORTER=otlp
+    env_file:
+      - .env
+    entrypoint: ['/bin/sh', '-c', 'update-ca-certificates 2>/dev/null; /bin/go-gin']
+    ports:
+      - "8081:8080"
+    restart: always
+    depends_on:
+      lgtm:
+        condition: service_started
+
+  py-fastapi:
+    image: py-fastapi:latest
+    container_name: otel_polyglot_py_fastapi
+    platform: linux/amd64
+    volumes:
+      - './certs:/etc/otel/certs:ro'
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=https://lgtm:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_INSECURE=false
+      - OTEL_EXPORTER_OTLP_CERTIFICATE=/etc/otel/certs/ca.crt
+      - OTEL_LOGS_EXPORTER=otlp
+    env_file:
+      - .env
+    ports:
+      - "8082:8080"
+    restart: always
+    depends_on:
+      lgtm:
+        condition: service_started
+
+  cs-aspnet:
+    image: cs-aspnet:latest
+    container_name: otel_polyglot_cs_aspnet
+    platform: linux/amd64
+    volumes:
+      - './certs:/etc/otel/certs:ro'
+      - './certs/ca.crt:/usr/local/share/ca-certificates/otel-ca.crt:ro'
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=https://lgtm:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_INSECURE=false
+      - OTEL_LOGS_EXPORTER=otlp
+    env_file:
+      - .env
+    # .NET SDK falls back to system trust store;
+    # OTEL_EXPORTER_OTLP_CERTIFICATE is not supported (expects cert+key pair).
+    entrypoint: ['/bin/sh', '-c', 'update-ca-certificates 2>/dev/null; dotnet CsAspNet.dll']
+    ports:
+      - "8083:8080"
+    restart: always
+    depends_on:
+      lgtm:
+        condition: service_started

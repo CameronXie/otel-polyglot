@@ -1,6 +1,7 @@
 # Variables
 PACKAGE_NAME=py-fastapi
 VERSION?=0.1.0
+IMAGE ?= $(PACKAGE_NAME)
 DIST_DIR=dist
 PYTHON=python
 UV=uv
@@ -34,9 +35,17 @@ build:
 ## docker-build: Build Docker image (default: amd64, use ARCH=arm64 for ARM)
 .PHONY: docker-build
 docker-build:
-	@echo "Building Docker image $(PACKAGE_NAME):$(VERSION) for $(PLATFORM)..."
-	docker buildx build --platform $(PLATFORM) --load -t $(PACKAGE_NAME):$(VERSION) -t $(PACKAGE_NAME):latest .
-	@echo "Build complete: $(PACKAGE_NAME):$(VERSION) ($(PLATFORM))"
+	@echo "Building Docker image $(IMAGE):$(VERSION) for $(PLATFORM)..."
+	docker buildx build --platform $(PLATFORM) --load -t $(IMAGE):$(VERSION) -t $(IMAGE):latest .
+	@echo "Build complete: $(IMAGE):$(VERSION) ($(PLATFORM))"
+
+## docker-publish: Build and push Docker image to registry
+.PHONY: docker-publish
+docker-publish: docker-build
+	@echo "Publishing $(IMAGE):$(VERSION)..."
+	docker push $(IMAGE):$(VERSION)
+	docker push $(IMAGE):latest
+	@echo "Published $(IMAGE):$(VERSION)"
 
 ## run: Run the service locally with hot reload
 .PHONY: run

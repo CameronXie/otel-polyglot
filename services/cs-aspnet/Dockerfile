@@ -27,11 +27,13 @@ RUN set -eux \
 
 FROM dev AS builder
 
+ARG VERSION=dev
+
 WORKDIR /usr/code
 COPY src/CsAspNet/*.csproj ./src/CsAspNet/
 RUN dotnet restore src/CsAspNet/CsAspNet.csproj
 COPY . .
-RUN dotnet publish src/CsAspNet/CsAspNet.csproj -c Release -o artifacts/publish
+RUN dotnet publish src/CsAspNet/CsAspNet.csproj -c Release -o artifacts/publish -p:VersionPrefix=${VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 

@@ -103,6 +103,7 @@ Instructions for building, testing, and linting the service outside of Docker.
 ```bash
 make build         # Build binary to dist/go-gin
 make docker-build  # Build Docker image (default: arm64, use ARCH=amd64 for x86_64)
+make docker-publish # Build and push Docker image to registry
 make run           # Run the service on port 8080
 make test          # Run tests with coverage and race detection
 make lint          # Format code and run linters

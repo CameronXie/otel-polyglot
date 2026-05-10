@@ -280,6 +280,8 @@ make ci-mcp                     # Run CI checks for all MCP servers
 make build                      # Build Docker images for all services and MCP servers
 make docker-build-<service>     # Build Docker image for a single service (e.g., make docker-build-go-gin)
 make docker-build-mcp-<server>  # Build Docker image for an MCP server (e.g., make docker-build-mcp-ts-mcp)
+make docker-publish             # Build and publish all service images to registry
+make docker-publish-<service>   # Build and publish a service image (e.g., make docker-publish-go-gin)
 make lint-actions               # Lint GitHub Actions workflows
 ```
 
