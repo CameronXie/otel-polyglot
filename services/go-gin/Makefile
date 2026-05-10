@@ -1,6 +1,7 @@
 # Variables
 BINARY_NAME=go-gin
 VERSION?=dev
+IMAGE ?= $(BINARY_NAME)
 DIST_DIR=dist
 GO_FILES=$(shell find . -name '*.go' -type f -not -path "./vendor/*")
 GO=$(shell which go)
@@ -26,9 +27,17 @@ build:
 ## docker-build: Build Docker image (default: amd64, use ARCH=arm64 for ARM)
 .PHONY: docker-build
 docker-build:
-	@echo "Building Docker image $(BINARY_NAME):$(VERSION) for $(PLATFORM)..."
-	docker buildx build --platform $(PLATFORM) --load -t $(BINARY_NAME):$(VERSION) -t $(BINARY_NAME):latest .
-	@echo "Build complete: $(BINARY_NAME):$(VERSION) ($(PLATFORM))"
+	@echo "Building Docker image $(IMAGE):$(VERSION) for $(PLATFORM)..."
+	docker buildx build --platform $(PLATFORM) --build-arg VERSION=$(VERSION) --load -t $(IMAGE):$(VERSION) -t $(IMAGE):latest .
+	@echo "Build complete: $(IMAGE):$(VERSION) ($(PLATFORM))"
+
+## docker-publish: Build and push Docker image to registry
+.PHONY: docker-publish
+docker-publish: docker-build
+	@echo "Publishing $(IMAGE):$(VERSION)..."
+	docker push $(IMAGE):$(VERSION)
+	docker push $(IMAGE):latest
+	@echo "Published $(IMAGE):$(VERSION)"
 
 ## run: Run the application with default config
 .PHONY: run

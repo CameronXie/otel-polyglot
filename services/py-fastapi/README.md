@@ -103,6 +103,7 @@ Instructions for building, testing, and linting the service outside of Docker.
 make install       # Install dependencies in virtual environment
 make build         # Build package to dist/
 make docker-build  # Build Docker image (default: amd64, use ARCH=arm64 for ARM)
+make docker-publish # Build and push Docker image to registry
 make run           # Run the service on port 8080
 make test          # Run tests with coverage
 make format        # Format code with ruff

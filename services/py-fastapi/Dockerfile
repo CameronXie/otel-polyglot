@@ -13,6 +13,7 @@ RUN set -eux \
     && rm -rf /var/lib/apt/lists/*
 
 ARG UV_VERSION=0.10.9
+ARG TRIVY_VERSION=0.70.0
 
 ENV PATH="/root/.local/bin:$PATH"
 WORKDIR /tmp/build
@@ -21,6 +22,9 @@ RUN set -eux \
     && curl -fsSL https://claude.ai/install.sh | bash \
     # install uv \
     && curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | bash \
+    # install trivy \
+    && curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz \
+      | tar -xz -C /usr/local/bin trivy \
     # clean up build directory
     && rm -rf /tmp/build
 
