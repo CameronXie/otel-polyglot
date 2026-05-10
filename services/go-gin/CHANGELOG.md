@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/CameronXie/otel-polyglot/compare/go-gin-v1.4.0...go-gin-v1.5.0) (2026-05-10)
+
+
+### Features
+
+* add docker publish targets and local LGTM integration tests ([#18](https://github.com/CameronXie/otel-polyglot/issues/18)) ([d117338](https://github.com/CameronXie/otel-polyglot/commit/d117338ea72dd6ec8749b189b5c8996af84a2168))
+
 ## [1.4.0](https://github.com/CameronXie/otel-polyglot/compare/go-gin-v1.3.0...go-gin-v1.4.0) (2026-05-01)
 
 
